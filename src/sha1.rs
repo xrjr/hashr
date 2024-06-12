@@ -123,7 +123,7 @@ pub fn encode_hex(bytes: &[u8]) -> String {
 mod tests {
     use std::process::Output;
 
-    use crate::{decode_hex, encode_hex, SHA1};
+    use crate::sha1::{decode_hex, encode_hex, SHA1};
 
 
     fn read_lines<P>(filename: P) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>> where P: AsRef<std::path::Path> {
