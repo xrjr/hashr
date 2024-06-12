@@ -2,5 +2,7 @@
 name = "hashr"
 version = "0.0.1"
 edition = "2021"
+description = "small library that aims to provide several hashing and related algorithms"
+licence = "MIT"
 
 [dependencies]
