@@ -1,17 +1,17 @@
-const BLOCK_LENGTH: usize = 64; // 512 bits = 64 Bytes
+// const BLOCK_LENGTH: usize = 64; // 512 bits = 64 Bytes
 
-struct SHA1 {
+pub struct SHA1 {
     message: Vec<u8>
 }
 
 impl SHA1 {
-    fn new(message: &[u8]) -> Self {
-        return Self{
+    pub fn new(message: &[u8]) -> Self {
+        Self{
             message: Vec::from(message)
-        };
+        }
     }
 
-    fn add_padding(&mut self) {
+    pub fn add_padding(&mut self) {
         let initial_length: u64 = self.message.len() as u64;
         let n_zeroes = (56u64.wrapping_sub(initial_length).wrapping_sub(1)) % 64;
         self.message.push(0b10000000);
@@ -25,7 +25,7 @@ impl SHA1 {
         }
     }
 
-    fn display_hex(&self) {
+    pub fn display_hex(&self) {
         println!("{:02X?}", self.message.as_slice());
     }
 
@@ -54,18 +54,18 @@ impl SHA1 {
     }
 
     fn s(n: usize, x: u32) -> u32 {
-        (x<<n) | (x>>32-n)
+        (x<<n) | (x>>(32-n))
     }
 
-    fn digest(self) -> [u8; 20] {
+    pub fn digest(self) -> [u8; 20] {
         let mut h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
         for block_number in 0..self.message.len()/64 {
 
             let mut w = [0u32; 80];
-            for i in 0..16 {
+            for (i, w_i) in w.iter_mut().enumerate().take(16) {
                 let mut buf: [u8; 4] = [0u8; 4];
                 buf.copy_from_slice(&self.message[block_number * 64 + i * 4..block_number * 64 + i * 4 + 4]);
-                w[i] = u32::from_be_bytes(buf);
+                *w_i = u32::from_be_bytes(buf);
             }
 
             for t in 16..80 {
@@ -74,7 +74,7 @@ impl SHA1 {
 
             let (mut a, mut b, mut c, mut d, mut e) = (h[0], h[1], h[2], h[3], h[4]);
 
-            for t in 0..80 {
+            for (t, _) in w.iter().enumerate() {
                 let temp: u32 = Self::s(5, a).wrapping_add(Self::f(t,b,c,d)).wrapping_add(e).wrapping_add(w[t]).wrapping_add(Self::k(t));
 
                 e = d;
@@ -103,27 +103,10 @@ impl SHA1 {
     }
 }
 
-use std::{fmt::Write, num::ParseIntError};
-
-pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
-}
-
-pub fn encode_hex(bytes: &[u8]) -> String {
-    let mut s = String::with_capacity(bytes.len() * 2);
-    for &b in bytes {
-        write!(&mut s, "{:02x}", b).unwrap();
-    }
-    s
-}
-
+#[cfg(test)]
 mod tests {
-    use std::process::Output;
-
-    use crate::sha1::{decode_hex, encode_hex, SHA1};
+    use super::SHA1;
+    use crate::hex::{decode_hex, encode_hex};
 
 
     fn read_lines<P>(filename: P) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>> where P: AsRef<std::path::Path> {
