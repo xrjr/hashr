@@ -66,7 +66,7 @@ fn compute_block(h: &mut [u32; 5], block: &[u8; 64]) {
 
 fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; 64], total_size: usize) {
     let n_zeroes = number_of_zero_bytes(total_size);
-    let mut last_index = total_size % 64;
+    let last_index = total_size % 64;
 
     let mut vbuf = [0u8; 128];
     vbuf[0..last_index].copy_from_slice(&buf[0..last_index]);
@@ -88,7 +88,7 @@ fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; 64], total_size: usize) {
     }
 }
 
-fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
+pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
 where
     R: Read,
 {
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_sha1reader_dgst_zero_size() {
-        let mut a: Vec<u8> = Vec::new();
+        let a: Vec<u8> = Vec::new();
         assert!(encode_hex(&digest_from_reader(&mut Cursor::new(a)).unwrap()).eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709"))
     }
 
