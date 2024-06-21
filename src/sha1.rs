@@ -143,7 +143,7 @@ fn number_of_zero_bytes(message_length: usize) -> usize {
 mod tests {
     use std::{io::Cursor, time};
 
-    use crate::{hex::{self, decode_hex, encode_hex}, sha1};
+    use crate::hex::{decode_hex, encode_hex};
     use super::digest_from_reader;
 
 
@@ -170,7 +170,7 @@ mod tests {
                 let output = decode_hex(test_case.get(1).unwrap()).unwrap();
                 let output = output.as_slice();
 
-                let dgst = sha1::digest_from_reader(&mut input).unwrap();
+                let dgst = digest_from_reader(&mut input).unwrap();
 
                 assert!(output.eq(&dgst));
             }
