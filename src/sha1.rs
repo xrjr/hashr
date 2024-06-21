@@ -1,20 +1,21 @@
-const BLOCK_SIZE: usize = 64; // 512 bits = 64 Bytes
+pub const BLOCK_BYTE_LENGTH: usize = 64; // 512 bits = 64 Bytes, B in hmac rfc
+pub const OUTPUT_BYTE_LENGTH: usize = 20; // L in hmac rfc
 const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
-pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
+pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; OUTPUT_BYTE_LENGTH], Error>
 where
     R: Read,
 {
     let mut total_size = 0;
     let mut h = default_h();
 
-    let mut buf = [0u8; BLOCK_SIZE];
+    let mut buf = [0u8; BLOCK_BYTE_LENGTH];
     let mut last_byte_index_in_buffer = 0;
 
     loop {
-        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_SIZE])?;
+        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_BYTE_LENGTH])?;
 
         if n == 0 {
             // EOF
@@ -22,7 +23,7 @@ where
         }
 
         last_byte_index_in_buffer += n;
-        if last_byte_index_in_buffer == BLOCK_SIZE {
+        if last_byte_index_in_buffer == BLOCK_BYTE_LENGTH {
             //block is complete
             last_byte_index_in_buffer = 0;
             compute_block(&mut h, &buf)
@@ -33,7 +34,7 @@ where
 
     compute_with_padding(&mut h, &buf, total_size);
 
-    let mut res = [0u8; 20];
+    let mut res = [0u8; OUTPUT_BYTE_LENGTH];
 
     res[0..4].copy_from_slice(&h[0].to_be_bytes());
     res[4..8].copy_from_slice(&h[1].to_be_bytes());
@@ -72,7 +73,7 @@ fn f(t: usize, b: u32, c: u32, d: u32) -> u32 {
     }
 }
 
-fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_SIZE]) {
+fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_BYTE_LENGTH]) {
     let mut w = [0u32; 80];
     for (i, w_i) in w.iter_mut().enumerate().take(16) {
         let mut buf: [u8; 4] = [0u8; 4];
@@ -107,11 +108,11 @@ fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_SIZE]) {
     h[4] = h[4].wrapping_add(e);
 }
 
-fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_SIZE], total_size: usize) {
+fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_BYTE_LENGTH], total_size: usize) {
     let n_zeroes = number_of_zero_bytes(total_size);
-    let last_index = total_size % BLOCK_SIZE;
+    let last_index = total_size % BLOCK_BYTE_LENGTH;
 
-    let mut vbuf = [0u8; 2 * BLOCK_SIZE];
+    let mut vbuf = [0u8; 2 * BLOCK_BYTE_LENGTH];
     vbuf[0..last_index].copy_from_slice(&buf[0..last_index]);
 
     vbuf[last_index] = 0b10000000;
@@ -125,10 +126,10 @@ fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_SIZE], total_size: us
     vbuf[zeroes_end_index..zeroes_end_index + TRAILING_MESSAGE_LENGTH_SIZE]
         .copy_from_slice(&total_size_bytes);
 
-    compute_block(h, &vbuf[..BLOCK_SIZE].try_into().unwrap());
+    compute_block(h, &vbuf[..BLOCK_BYTE_LENGTH].try_into().unwrap());
 
-    if last_index > BLOCK_SIZE - ONE_PADDED_BYTE_SIZE - TRAILING_MESSAGE_LENGTH_SIZE {
-        compute_block(h, &vbuf[BLOCK_SIZE..].try_into().unwrap());
+    if last_index > BLOCK_BYTE_LENGTH - ONE_PADDED_BYTE_SIZE - TRAILING_MESSAGE_LENGTH_SIZE {
+        compute_block(h, &vbuf[BLOCK_BYTE_LENGTH..].try_into().unwrap());
     }
 }
 
@@ -137,8 +138,8 @@ fn default_h() -> [u32; 5] {
 }
 
 fn number_of_zero_bytes(total_size: usize) -> usize {
-    (BLOCK_SIZE - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE))
-        % BLOCK_SIZE
+    (BLOCK_BYTE_LENGTH - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_BYTE_LENGTH))
+        % BLOCK_BYTE_LENGTH
 }
 
 #[cfg(test)]
