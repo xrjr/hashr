@@ -1,4 +1,6 @@
-// const BLOCK_LENGTH: usize = 64; // 512 bits = 64 Bytes
+const BLOCK_SIZE: usize = 64; // 512 bits = 64 Bytes
+const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
+const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
 fn k(t: usize) -> u32 {
@@ -29,7 +31,7 @@ fn f(t: usize, b: u32, c: u32, d: u32) -> u32 {
     }
 }
 
-fn compute_block(h: &mut [u32; 5], block: &[u8; 64]) {
+fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_SIZE]) {
     let mut w = [0u32; 80];
     for (i, w_i) in w.iter_mut().enumerate().take(16) {
         let mut buf: [u8; 4] = [0u8; 4];
@@ -64,11 +66,11 @@ fn compute_block(h: &mut [u32; 5], block: &[u8; 64]) {
     h[4] = h[4].wrapping_add(e);
 }
 
-fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; 64], total_size: usize) {
+fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_SIZE], total_size: usize) {
     let n_zeroes = number_of_zero_bytes(total_size);
-    let last_index = total_size % 64;
+    let last_index = total_size % BLOCK_SIZE;
 
-    let mut vbuf = [0u8; 128];
+    let mut vbuf = [0u8; 2 * BLOCK_SIZE];
     vbuf[0..last_index].copy_from_slice(&buf[0..last_index]);
 
     vbuf[last_index] = 0b10000000;
@@ -77,15 +79,19 @@ fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; 64], total_size: usize) {
     let zeroes_end_index = zeroes_start_index + n_zeroes;
     vbuf[zeroes_start_index..zeroes_end_index].fill(0b00000000);
 
-    let total_size_bytes = (total_size * 8).to_be_bytes(); // TODO set the buffer size ie use u64 instead of usize
+    let total_size_bytes: [u8; TRAILING_MESSAGE_LENGTH_SIZE] = (total_size * 8).to_be_bytes();
 
-    vbuf[zeroes_end_index..zeroes_end_index+8].copy_from_slice(&total_size_bytes);
+    vbuf[zeroes_end_index..zeroes_end_index+TRAILING_MESSAGE_LENGTH_SIZE].copy_from_slice(&total_size_bytes);
 
-    compute_block(h, &vbuf[..64].try_into().unwrap());
+    compute_block(h, &vbuf[..BLOCK_SIZE].try_into().unwrap());
 
-    if last_index > 55 {
-        compute_block(h, &vbuf[64..].try_into().unwrap());
+    if last_index > BLOCK_SIZE - ONE_PADDED_BYTE_SIZE - TRAILING_MESSAGE_LENGTH_SIZE {
+        compute_block(h, &vbuf[BLOCK_SIZE..].try_into().unwrap());
     }
+}
+
+fn default_h() -> [u32; 5] {
+    [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
 }
 
 pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
@@ -93,13 +99,13 @@ where
     R: Read,
 {
     let mut total_size = 0;
-    let mut h: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
+    let mut h  = default_h();
 
-    let mut buf = [0u8; 64];
+    let mut buf = [0u8; BLOCK_SIZE];
     let mut last_byte_index_in_buffer = 0;
 
     loop {
-        let n = r.read(&mut buf[last_byte_index_in_buffer..64])?;
+        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_SIZE])?;
 
         if n == 0 {
             // EOF
@@ -107,7 +113,7 @@ where
         }
 
         last_byte_index_in_buffer += n;
-        if last_byte_index_in_buffer == 64 {
+        if last_byte_index_in_buffer == BLOCK_SIZE {
             //block is complete
             last_byte_index_in_buffer = 0;
             compute_block(&mut h, &buf)
@@ -130,7 +136,7 @@ where
 }
 
 fn number_of_zero_bytes(message_length: usize) -> usize {
-    (64 - ((message_length + 1 + 8) % 64)) % 64
+    (BLOCK_SIZE - ((message_length + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE)) % BLOCK_SIZE
 }
 
 #[cfg(test)]
