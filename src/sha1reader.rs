@@ -116,7 +116,7 @@ where
         total_size += n;
     }
 
-    compute_with_padding(&mut h, &mut buf, total_size);
+    compute_with_padding(&mut h, &buf, total_size);
 
     let mut res = [0u8; 20];
 
