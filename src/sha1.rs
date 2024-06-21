@@ -3,6 +3,47 @@ const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
+pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
+where
+    R: Read,
+{
+    let mut total_size = 0;
+    let mut h = default_h();
+
+    let mut buf = [0u8; BLOCK_SIZE];
+    let mut last_byte_index_in_buffer = 0;
+
+    loop {
+        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_SIZE])?;
+
+        if n == 0 {
+            // EOF
+            break;
+        }
+
+        last_byte_index_in_buffer += n;
+        if last_byte_index_in_buffer == BLOCK_SIZE {
+            //block is complete
+            last_byte_index_in_buffer = 0;
+            compute_block(&mut h, &buf)
+        }
+
+        total_size += n;
+    }
+
+    compute_with_padding(&mut h, &buf, total_size);
+
+    let mut res = [0u8; 20];
+
+    res[0..4].copy_from_slice(&h[0].to_be_bytes());
+    res[4..8].copy_from_slice(&h[1].to_be_bytes());
+    res[8..12].copy_from_slice(&h[2].to_be_bytes());
+    res[12..16].copy_from_slice(&h[3].to_be_bytes());
+    res[16..20].copy_from_slice(&h[4].to_be_bytes());
+
+    Ok(res)
+}
+
 fn k(t: usize) -> u32 {
     if t < 20 {
         0x5A827999
@@ -75,13 +116,14 @@ fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_SIZE], total_size: us
 
     vbuf[last_index] = 0b10000000;
 
-    let zeroes_start_index = last_index+1;
+    let zeroes_start_index = last_index + 1;
     let zeroes_end_index = zeroes_start_index + n_zeroes;
     vbuf[zeroes_start_index..zeroes_end_index].fill(0b00000000);
 
     let total_size_bytes: [u8; TRAILING_MESSAGE_LENGTH_SIZE] = (total_size * 8).to_be_bytes();
 
-    vbuf[zeroes_end_index..zeroes_end_index+TRAILING_MESSAGE_LENGTH_SIZE].copy_from_slice(&total_size_bytes);
+    vbuf[zeroes_end_index..zeroes_end_index + TRAILING_MESSAGE_LENGTH_SIZE]
+        .copy_from_slice(&total_size_bytes);
 
     compute_block(h, &vbuf[..BLOCK_SIZE].try_into().unwrap());
 
@@ -94,88 +136,52 @@ fn default_h() -> [u32; 5] {
     [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0]
 }
 
-pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; 20], Error>
-where
-    R: Read,
-{
-    let mut total_size = 0;
-    let mut h  = default_h();
-
-    let mut buf = [0u8; BLOCK_SIZE];
-    let mut last_byte_index_in_buffer = 0;
-
-    loop {
-        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_SIZE])?;
-
-        if n == 0 {
-            // EOF
-            break;
-        }
-
-        last_byte_index_in_buffer += n;
-        if last_byte_index_in_buffer == BLOCK_SIZE {
-            //block is complete
-            last_byte_index_in_buffer = 0;
-            compute_block(&mut h, &buf)
-        }
-
-        total_size += n;
-    }
-
-    compute_with_padding(&mut h, &buf, total_size);
-
-    let mut res = [0u8; 20];
-
-    res[0..4].copy_from_slice(&h[0].to_be_bytes());
-    res[4..8].copy_from_slice(&h[1].to_be_bytes());
-    res[8..12].copy_from_slice(&h[2].to_be_bytes());
-    res[12..16].copy_from_slice(&h[3].to_be_bytes());
-    res[16..20].copy_from_slice(&h[4].to_be_bytes());
-
-    Ok(res)
-}
-
-fn number_of_zero_bytes(message_length: usize) -> usize {
-    (BLOCK_SIZE - ((message_length + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE)) % BLOCK_SIZE
+fn number_of_zero_bytes(total_size: usize) -> usize {
+    (BLOCK_SIZE - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE))
+        % BLOCK_SIZE
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{io::Cursor, time};
+    use std::io::Cursor;
 
-    use crate::hex::{decode_hex, encode_hex};
     use super::digest_from_reader;
+    use crate::hex::{decode_hex, encode_hex};
 
-
-    fn read_lines<P>(filename: P) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>> where P: AsRef<std::path::Path> {
+    fn read_lines<P>(
+        filename: P,
+    ) -> std::io::Result<std::io::Lines<std::io::BufReader<std::fs::File>>>
+    where
+        P: AsRef<std::path::Path>,
+    {
         use std::io::BufRead;
         let file = std::fs::File::open(filename)?;
         Ok(std::io::BufReader::new(file).lines())
     }
 
     #[test]
-    fn test_sha1reader_dgst_zero_size() {
+    fn test_sha1_dgst_zero_size() {
         let a: Vec<u8> = Vec::new();
-        assert!(encode_hex(&digest_from_reader(&mut Cursor::new(a)).unwrap()).eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709"))
+        assert!(
+            encode_hex(&digest_from_reader(&mut Cursor::new(a)).unwrap())
+                .eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709")
+        )
     }
 
     #[test]
-    fn test_sha1reader_dgst_from_file() {
-        let start = time::Instant::now();
-        if let Ok(lines) = read_lines("./sha1.generated-testcases") {
-            for line in lines.flatten() {
-                let test_case: Vec<&str> = line.split(' ').collect();
-                let input = decode_hex(*test_case.get(0).unwrap()).unwrap();
-                let mut input = input.as_slice();
-                let output = decode_hex(test_case.get(1).unwrap()).unwrap();
-                let output = output.as_slice();
+    fn test_sha1_dgst_from_file() {
+        let lines =
+            read_lines("./sha1.generated-testcases").expect("error reading sha1 test cases");
+        for line in lines.flatten() {
+            let test_case: Vec<&str> = line.split(' ').collect();
+            let input = decode_hex(*test_case.get(0).unwrap()).unwrap();
+            let mut input = input.as_slice();
+            let output = decode_hex(test_case.get(1).unwrap()).unwrap();
+            let output = output.as_slice();
 
-                let dgst = digest_from_reader(&mut input).unwrap();
+            let dgst = digest_from_reader(&mut input).unwrap();
 
-                assert!(output.eq(&dgst));
-            }
+            assert!(output.eq(&dgst));
         }
-        let elapsed = start.elapsed();
-        println!("reader {}", elapsed.as_millis());
     }
 }
