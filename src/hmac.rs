@@ -25,7 +25,10 @@ impl HMACSHA1 {
 
         let mut sha1state = SHA1::new();
         sha1state.update(key_ipad.as_slice());
-        Self { sha1state, key_opad }
+        Self {
+            sha1state,
+            key_opad,
+        }
     }
 
     pub fn update(&mut self, data: &[u8]) {
@@ -47,7 +50,10 @@ pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; sha1::OUTPUT_BYTE
     hmac_sha1_state.finalize()
 }
 
-pub fn sha1_digest_from_reader<R>(mut r: R, key: &[u8]) -> Result<[u8; sha1::OUTPUT_BYTE_LENGTH], Error>
+pub fn sha1_digest_from_reader<R>(
+    mut r: R,
+    key: &[u8],
+) -> Result<[u8; sha1::OUTPUT_BYTE_LENGTH], Error>
 where
     R: Read,
 {

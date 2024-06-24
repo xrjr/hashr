@@ -15,7 +15,7 @@ impl SHA1 {
         Self {
             buf: [0u8; BLOCK_BYTE_LENGTH],
             total_size: 0,
-            h: default_h()
+            h: default_h(),
         }
     }
 
@@ -24,11 +24,11 @@ impl SHA1 {
         while i < data.len() {
             let last_buf_index = self.total_size % self.buf.len();
             let copy_length = usize::min(self.buf.len() - last_buf_index, data.len() - i);
-            self.buf[last_buf_index..last_buf_index+copy_length].copy_from_slice(&data[i..i+copy_length]);
+            self.buf[last_buf_index..last_buf_index + copy_length]
+                .copy_from_slice(&data[i..i + copy_length]);
 
             i += copy_length;
             self.total_size += copy_length;
-            
 
             if self.total_size % self.buf.len() == 0 {
                 compute_block(&mut self.h, &self.buf);
@@ -195,9 +195,8 @@ mod tests {
 
     #[test]
     fn test_sha1_dgst_zero_size() {
-        assert!(
-            encode_hex(&digest_from_bytes(&[0u8; 0])).eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709")
-        )
+        assert!(encode_hex(&digest_from_bytes(&[0u8; 0]))
+            .eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709"))
     }
 
     #[test]
