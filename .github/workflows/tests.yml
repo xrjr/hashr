@@ -15,6 +15,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sha1.generated-testcases
+          key: sha1.generated-testcases
       - name: Generate sha1 test cases
         if: steps.cache-sha1-test-cases.outputs.cache-hit != 'true'
         run: |
