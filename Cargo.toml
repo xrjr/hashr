@@ -1,6 +1,6 @@
 [package]
 name = "hashr"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 description = "small library that aims to provide several hashing and related algorithms"
 license = "MIT"
