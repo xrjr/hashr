@@ -10,7 +10,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Cache sha1 test cases
+        id: cache-sha1-test-cases
+        uses: actions/cache@v4
+        with:
+          path: sha1.generated-testcases
       - name: Generate sha1 test cases
+        if: steps.cache-sha1-test-cases.outputs.cache-hit != 'true'
         run: |
           chmod +x scripts/generate-sha1-tests.sh
           scripts/generate-sha1-tests.sh

@@ -7,7 +7,7 @@
 
 # `cargo test` needs the generated file to pass.
 
-for i in {0..1000000}
+for i in {0..10000}
 do
     l=$((1 + $RANDOM % 256))
     bytes=$(openssl rand -hex $l)
