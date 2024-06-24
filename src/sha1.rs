@@ -179,7 +179,7 @@ fn number_of_zero_bytes(total_size: usize) -> usize {
 mod tests {
     use std::io::Cursor;
 
-    use super::digest_from_reader;
+    use super::digest_from_bytes;
     use crate::hex::{decode_hex, encode_hex};
 
     fn read_lines<P>(
@@ -195,10 +195,8 @@ mod tests {
 
     #[test]
     fn test_sha1_dgst_zero_size() {
-        let a: Vec<u8> = Vec::new();
         assert!(
-            encode_hex(&digest_from_reader(Cursor::new(a)).unwrap())
-                .eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709")
+            encode_hex(&digest_from_bytes(&[0u8; 0])).eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709")
         )
     }
 
@@ -213,7 +211,7 @@ mod tests {
             let output = decode_hex(test_case.get(1).unwrap()).unwrap();
             let output = output.as_slice();
 
-            let dgst = digest_from_reader(&input[..]).unwrap();
+            let dgst = digest_from_bytes(&input);
 
             assert!(output.eq(&dgst));
         }
