@@ -10,6 +10,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@stable
+      - name: Generate sha1 test cases
+        run: |
+          chmod +x scripts/generate-sha1-tests.sh
+          scripts/generate-sha1-tests.sh
       - name: Cargo test (debug)
         run: cargo test --all-features
       - name: Cargo test (release)
