@@ -4,7 +4,7 @@ const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
-pub fn digest_from_reader<R>(r: &mut R) -> Result<[u8; OUTPUT_BYTE_LENGTH], Error>
+pub fn digest_from_reader<R>(mut r: R) -> Result<[u8; OUTPUT_BYTE_LENGTH], Error>
 where
     R: Read,
 {
@@ -138,7 +138,8 @@ fn default_h() -> [u32; 5] {
 }
 
 fn number_of_zero_bytes(total_size: usize) -> usize {
-    (BLOCK_BYTE_LENGTH - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_BYTE_LENGTH))
+    (BLOCK_BYTE_LENGTH
+        - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_BYTE_LENGTH))
         % BLOCK_BYTE_LENGTH
 }
 
@@ -164,7 +165,7 @@ mod tests {
     fn test_sha1_dgst_zero_size() {
         let a: Vec<u8> = Vec::new();
         assert!(
-            encode_hex(&digest_from_reader(&mut Cursor::new(a)).unwrap())
+            encode_hex(&digest_from_reader(Cursor::new(a)).unwrap())
                 .eq_ignore_ascii_case("da39a3ee5e6b4b0d3255bfef95601890afd80709")
         )
     }
@@ -176,11 +177,11 @@ mod tests {
         for line in lines.flatten() {
             let test_case: Vec<&str> = line.split(' ').collect();
             let input = decode_hex(*test_case.get(0).unwrap()).unwrap();
-            let mut input = input.as_slice();
+            let input = input.as_slice();
             let output = decode_hex(test_case.get(1).unwrap()).unwrap();
             let output = output.as_slice();
 
-            let dgst = digest_from_reader(&mut input).unwrap();
+            let dgst = digest_from_reader(&input[..]).unwrap();
 
             assert!(output.eq(&dgst));
         }
