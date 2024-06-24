@@ -177,8 +177,6 @@ fn number_of_zero_bytes(total_size: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-
     use super::digest_from_bytes;
     use crate::hex::{decode_hex, encode_hex};
 

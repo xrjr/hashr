@@ -1,0 +1,16 @@
+name: tests
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cargo test (debug)
+        run: cargo test --all-features
+      - name: Cargo test (release)
+        run: cargo test --all-features --release
