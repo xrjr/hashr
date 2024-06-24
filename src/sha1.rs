@@ -4,45 +4,77 @@ const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
+pub struct SHA1 {
+    buf: [u8; BLOCK_BYTE_LENGTH],
+    total_size: usize,
+    h: [u32; 5],
+}
+
+impl SHA1 {
+    pub fn new() -> Self {
+        Self {
+            buf: [0u8; BLOCK_BYTE_LENGTH],
+            total_size: 0,
+            h: default_h()
+        }
+    }
+
+    pub fn update(&mut self, data: &[u8]) {
+        let mut i = 0;
+        while i < data.len() {
+            let last_buf_index = self.total_size % self.buf.len();
+            let copy_length = usize::min(self.buf.len() - last_buf_index, data.len() - i);
+            self.buf[last_buf_index..last_buf_index+copy_length].copy_from_slice(&data[i..i+copy_length]);
+
+            i += copy_length;
+            self.total_size += copy_length;
+            
+
+            if self.total_size % self.buf.len() == 0 {
+                compute_block(&mut self.h, &self.buf);
+            }
+        }
+    }
+
+    pub fn finalize(&mut self) -> [u8; OUTPUT_BYTE_LENGTH] {
+        compute_with_padding(&mut self.h, &self.buf, self.total_size);
+
+        let mut res = [0u8; OUTPUT_BYTE_LENGTH];
+
+        res[0..4].copy_from_slice(&self.h[0].to_be_bytes());
+        res[4..8].copy_from_slice(&self.h[1].to_be_bytes());
+        res[8..12].copy_from_slice(&self.h[2].to_be_bytes());
+        res[12..16].copy_from_slice(&self.h[3].to_be_bytes());
+        res[16..20].copy_from_slice(&self.h[4].to_be_bytes());
+
+        res
+    }
+}
+
+pub fn digest_from_bytes(b: &[u8]) -> [u8; OUTPUT_BYTE_LENGTH] {
+    let mut sha1_state = SHA1::new();
+    sha1_state.update(b);
+    sha1_state.finalize()
+}
+
 pub fn digest_from_reader<R>(mut r: R) -> Result<[u8; OUTPUT_BYTE_LENGTH], Error>
 where
     R: Read,
 {
-    let mut total_size = 0;
-    let mut h = default_h();
-
-    let mut buf = [0u8; BLOCK_BYTE_LENGTH];
-    let mut last_byte_index_in_buffer = 0;
+    let mut sha1_state = SHA1::new();
+    let mut buf = [0u8; 512];
 
     loop {
-        let n = r.read(&mut buf[last_byte_index_in_buffer..BLOCK_BYTE_LENGTH])?;
+        let n = r.read(&mut buf)?;
 
         if n == 0 {
-            // EOF
             break;
         }
 
-        last_byte_index_in_buffer += n;
-        if last_byte_index_in_buffer == BLOCK_BYTE_LENGTH {
-            //block is complete
-            last_byte_index_in_buffer = 0;
-            compute_block(&mut h, &buf)
-        }
-
-        total_size += n;
+        sha1_state.update(&buf[..n]);
     }
 
-    compute_with_padding(&mut h, &buf, total_size);
-
-    let mut res = [0u8; OUTPUT_BYTE_LENGTH];
-
-    res[0..4].copy_from_slice(&h[0].to_be_bytes());
-    res[4..8].copy_from_slice(&h[1].to_be_bytes());
-    res[8..12].copy_from_slice(&h[2].to_be_bytes());
-    res[12..16].copy_from_slice(&h[3].to_be_bytes());
-    res[16..20].copy_from_slice(&h[4].to_be_bytes());
-
-    Ok(res)
+    Ok(sha1_state.finalize())
 }
 
 fn k(t: usize) -> u32 {
