@@ -41,6 +41,12 @@ impl HMACSHA1 {
     }
 }
 
+pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; sha1::OUTPUT_BYTE_LENGTH] {
+    let mut hmac_sha1_state = HMACSHA1::new(key);
+    hmac_sha1_state.update(data);
+    hmac_sha1_state.finalize()
+}
+
 pub fn sha1_digest_from_reader<R>(mut r: R, key: &[u8]) -> Result<[u8; sha1::OUTPUT_BYTE_LENGTH], Error>
 where
     R: Read,
@@ -63,11 +69,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-
     use crate::hex;
 
-    use super::sha1_digest_from_reader;
+    use super::sha1_digest_from_bytes;
 
     #[test]
     fn test_hmac_sha1_rfc_test_vectors() {
@@ -124,7 +128,7 @@ mod tests {
         ];
 
         for test_case in tests_cases {
-            let digest = sha1_digest_from_reader(Cursor::new(test_case.data), &test_case.key).unwrap();
+            let digest = sha1_digest_from_bytes(test_case.data.as_slice(), &test_case.key);
             assert!(digest.eq(test_case.expected_digest.as_slice()))
         }
     }

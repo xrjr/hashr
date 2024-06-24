@@ -1,8 +1,7 @@
-use crate::{hmac::sha1_digest_from_reader, sha1};
+use crate::{hmac::sha1_digest_from_bytes, sha1};
 
 pub fn hotp(key: &[u8], counter: u64, digits: u32) -> u32 {
-    let hs = sha1_digest_from_reader(counter.to_be_bytes().as_slice(), key)
-        .expect("should remove this by not necessiting a reader");
+    let hs = sha1_digest_from_bytes(counter.to_be_bytes().as_slice(), key);
     let snum = dt(&hs);
     snum % 10u32.pow(digits)
 }
@@ -38,7 +37,7 @@ mod tests {
         ];
 
         for i in 0..expected.len() {
-            let hs = hmac::sha1_digest_from_reader(i.to_be_bytes().as_slice(), secret.as_slice()).unwrap();
+            let hs = hmac::sha1_digest_from_bytes(i.to_be_bytes().as_slice(), secret.as_slice());
             let expected = hex::decode_hex(expected[i]).unwrap();
             let expected = expected.as_slice();
             assert!(hs.eq(expected));
@@ -54,7 +53,7 @@ mod tests {
         ];
 
         for i in 0..expected.len() {
-            let hs = hmac::sha1_digest_from_reader(i.to_be_bytes().as_slice(), secret.as_slice()).unwrap();
+            let hs = hmac::sha1_digest_from_bytes(i.to_be_bytes().as_slice(), secret.as_slice());
             assert!(dt(&hs) == expected[i]);
         }
     }
