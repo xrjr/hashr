@@ -1,13 +1,15 @@
 use std::io::{Error, Read};
 
-use crate::sha1::{self, SHA1};
+use crate::{hash::HashFn, sha1::{self, SHA1}};
 
-pub struct HMACSHA1 {
+pub struct HMAC<const B: usize, const L: usize, H: HashFn<B, L>> {
     key_opad: [u8; sha1::BLOCK_BYTE_LENGTH],
-    sha1state: SHA1,
+    sha1state: H,
 }
 
-impl HMACSHA1 {
+type HMACSHA1 = HMAC<64, 20, sha1::SHA1>;
+
+impl<const B: usize, const L: usize, H: HashFn<B, L>> HMAC<B, L, H> {
     pub fn new(key: &[u8]) -> Self {
         let mut final_key = [0u8; sha1::BLOCK_BYTE_LENGTH];
         if key.len() > sha1::BLOCK_BYTE_LENGTH {
@@ -23,7 +25,7 @@ impl HMACSHA1 {
             key_opad[i] ^= final_key[i];
         }
 
-        let mut sha1state = SHA1::new();
+        let mut sha1state = H::new();
         sha1state.update(key_ipad.as_slice());
         Self {
             sha1state,
@@ -35,9 +37,9 @@ impl HMACSHA1 {
         self.sha1state.update(data);
     }
 
-    pub fn finalize(&mut self) -> [u8; sha1::OUTPUT_BYTE_LENGTH] {
+    pub fn finalize(&mut self) -> [u8; L] {
         let first_hash = self.sha1state.finalize();
-        let mut second_sha1_state = SHA1::new();
+        let mut second_sha1_state = H::new();
         second_sha1_state.update(&self.key_opad);
         second_sha1_state.update(&first_hash);
         second_sha1_state.finalize()

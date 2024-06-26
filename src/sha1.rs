@@ -4,14 +4,16 @@ const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
 
+use crate::hash::HashFn;
+
 pub struct SHA1 {
     buf: [u8; BLOCK_BYTE_LENGTH],
     total_size: usize,
     h: [u32; 5],
 }
 
-impl SHA1 {
-    pub fn new() -> Self {
+impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
+    fn new() -> Self {
         Self {
             buf: [0u8; BLOCK_BYTE_LENGTH],
             total_size: 0,
@@ -19,7 +21,7 @@ impl SHA1 {
         }
     }
 
-    pub fn update(&mut self, data: &[u8]) {
+    fn update(&mut self, data: &[u8]) {
         let mut i = 0;
         while i < data.len() {
             let last_buf_index = self.total_size % self.buf.len();
@@ -36,7 +38,7 @@ impl SHA1 {
         }
     }
 
-    pub fn finalize(&mut self) -> [u8; OUTPUT_BYTE_LENGTH] {
+    fn finalize(&mut self) -> [u8; OUTPUT_BYTE_LENGTH] {
         compute_with_padding(&mut self.h, &self.buf, self.total_size);
 
         let mut res = [0u8; OUTPUT_BYTE_LENGTH];
