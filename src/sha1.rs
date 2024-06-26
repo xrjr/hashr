@@ -12,15 +12,17 @@ pub struct SHA1 {
     h: [u32; 5],
 }
 
-impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
-    fn new() -> Self {
+impl SHA1 {
+    pub fn new() -> Self {
         Self {
             buf: [0u8; BLOCK_BYTE_LENGTH],
             total_size: 0,
             h: default_h(),
         }
     }
+}
 
+impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
     fn update(&mut self, data: &[u8]) {
         let mut i = 0;
         while i < data.len() {
