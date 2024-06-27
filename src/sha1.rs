@@ -22,6 +22,12 @@ impl SHA1 {
     }
 }
 
+impl Default for SHA1 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
     fn update(&mut self, data: &[u8]) {
         let mut i = 0;

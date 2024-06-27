@@ -39,7 +39,7 @@ mod tests {
             time: u64,
             expected_t: u64,
             expected_totp_sha1: u32,
-        };
+        }
         let test_cases = [
             TestCase {
                 time: 59,
@@ -79,7 +79,7 @@ mod tests {
             assert!(number_of_time_steps(0, test_case.time, 30) == test_case.expected_t);
             assert!(
                 totp(SHA1::new, test_case.time, 0, 30, 8, secret) == test_case.expected_totp_sha1
-            );
+            )
         }
     }
 }
