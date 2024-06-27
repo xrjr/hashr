@@ -1,23 +1,32 @@
-use crate::{hmac::sha1_digest_from_bytes, sha1};
+use crate::hash::HashFn;
+use crate::hmac::HMAC;
 
-pub fn hotp(key: &[u8], counter: u64, digits: u32) -> u32 {
-    let hs = sha1_digest_from_bytes(counter.to_be_bytes().as_slice(), key);
+pub fn hotp<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H>(
+    hash_new_fn: F,
+    key: &[u8],
+    counter: u64,
+    digits: u32,
+) -> u32 {
+    let mut counter_hasher = HMAC::new(hash_new_fn, key);
+    counter_hasher.update(counter.to_be_bytes().as_slice());
+    let hs = counter_hasher.finalize();
     let snum = dt(&hs);
     snum % 10u32.pow(digits)
 }
 
-// dynamic truncation of sha1 digest
-fn dt(hs: &[u8; sha1::OUTPUT_BYTE_LENGTH]) -> u32 {
-    let offset = (hs[19] & 0xf) as usize;
+// dynamic truncation
+fn dt<const L: usize>(hs: &[u8; L]) -> u32 {
+    let offset = (hs[L - 1] & 0xf) as usize;
     ((hs[offset] & 0x7f) as u32) << 24
-        | ((hs[offset + 1] & 0xff) as u32) << 16
-        | ((hs[offset + 2] & 0xff) as u32) << 8
-        | ((hs[offset + 3] & 0xff) as u32)
+        | (hs[offset + 1] as u32) << 16
+        | (hs[offset + 2] as u32) << 8
+        | (hs[offset + 3] as u32)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{dt, hotp};
+    use crate::sha1::SHA1;
     use crate::{hex, hmac};
 
     #[test]
@@ -66,7 +75,7 @@ mod tests {
         ];
 
         for i in 0..expected.len() {
-            assert!(hotp(secret.as_slice(), i as u64, 6) == expected[i])
+            assert!(hotp(SHA1::new, secret.as_slice(), i as u64, 6) == expected[i])
         }
     }
 }

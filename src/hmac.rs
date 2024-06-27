@@ -1,63 +1,69 @@
 use std::io::{Error, Read};
 
-use crate::sha1::{self, SHA1};
+use crate::{hash::HashFn, sha1::SHA1};
 
-pub struct HMACSHA1 {
-    key_opad: [u8; sha1::BLOCK_BYTE_LENGTH],
-    sha1state: SHA1,
+pub struct HMAC<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> {
+    key_opad: [u8; B],
+    hash_state: H,
+    hash_new_fn: F,
 }
 
-impl HMACSHA1 {
-    pub fn new(key: &[u8]) -> Self {
-        let mut final_key = [0u8; sha1::BLOCK_BYTE_LENGTH];
-        if key.len() > sha1::BLOCK_BYTE_LENGTH {
-            final_key[..sha1::OUTPUT_BYTE_LENGTH].copy_from_slice(&sha1::digest_from_bytes(key));
+impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HMAC<B, L, H, F> {
+    pub fn new(hash_new_fn: F, key: &[u8]) -> Self {
+        let mut final_key = [0u8; B];
+        if key.len() > B {
+            let mut key_hasher = hash_new_fn();
+            key_hasher.update(key);
+            final_key[..L].copy_from_slice(&key_hasher.finalize());
         } else {
             final_key[..key.len()].copy_from_slice(key);
         }
 
-        let mut key_ipad = [0x36; sha1::BLOCK_BYTE_LENGTH];
-        let mut key_opad = [0x5c; sha1::BLOCK_BYTE_LENGTH];
-        for i in 0..sha1::BLOCK_BYTE_LENGTH {
+        let mut key_ipad = [0x36; B];
+        let mut key_opad = [0x5c; B];
+        for i in 0..B {
             key_ipad[i] ^= final_key[i];
             key_opad[i] ^= final_key[i];
         }
 
-        let mut sha1state = SHA1::new();
+        let mut sha1state = hash_new_fn();
         sha1state.update(key_ipad.as_slice());
         Self {
-            sha1state,
+            hash_state: sha1state,
             key_opad,
+            hash_new_fn,
         }
     }
+}
 
-    pub fn update(&mut self, data: &[u8]) {
-        self.sha1state.update(data);
+impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HashFn<B, L>
+    for HMAC<B, L, H, F>
+{
+    fn update(&mut self, data: &[u8]) {
+        self.hash_state.update(data);
     }
 
-    pub fn finalize(&mut self) -> [u8; sha1::OUTPUT_BYTE_LENGTH] {
-        let first_hash = self.sha1state.finalize();
-        let mut second_sha1_state = SHA1::new();
+    fn finalize(&mut self) -> [u8; L] {
+        let first_hash = self.hash_state.finalize();
+        let f = &self.hash_new_fn;
+        let mut second_sha1_state = f();
         second_sha1_state.update(&self.key_opad);
         second_sha1_state.update(&first_hash);
         second_sha1_state.finalize()
     }
 }
 
-pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; sha1::OUTPUT_BYTE_LENGTH] {
-    let mut hmac_sha1_state = HMACSHA1::new(key);
+pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; SHA1::OUTPUT_SIZE] {
+    let mut hmac_sha1_state = HMAC::new(SHA1::new, key);
     hmac_sha1_state.update(data);
     hmac_sha1_state.finalize()
 }
 
-pub fn sha1_digest_from_reader<R>(
-    mut r: R,
-    key: &[u8],
-) -> Result<[u8; sha1::OUTPUT_BYTE_LENGTH], Error>
+pub fn sha1_digest_from_reader<R>(mut r: R, key: &[u8]) -> Result<[u8; SHA1::OUTPUT_SIZE], Error>
 where
     R: Read,
 {
-    let mut hmac_sha1_state = HMACSHA1::new(key);
+    let mut hmac_sha1_state = HMAC::new(SHA1::new, key);
     let mut buf = [0u8; 512];
 
     loop {
