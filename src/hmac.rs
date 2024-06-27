@@ -1,6 +1,6 @@
 use std::io::{Error, Read};
 
-use crate::{hash::HashFn, sha1::SHA1};
+use crate::hash::HashFn;
 
 pub struct HMAC<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> {
     key_opad: [u8; B],
@@ -53,17 +53,28 @@ impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HashFn<B, L>
     }
 }
 
-pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; SHA1::OUTPUT_SIZE] {
-    let mut hmac_sha1_state = HMAC::new(SHA1::new, key);
-    hmac_sha1_state.update(data);
-    hmac_sha1_state.finalize()
+pub fn digest_from_bytes<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H>(
+    hash_new_fn: F,
+    data: &[u8],
+    key: &[u8],
+) -> [u8; L] {
+    let mut state = HMAC::new(hash_new_fn, key);
+    state.update(data);
+    state.finalize()
 }
 
-pub fn sha1_digest_from_reader<R>(mut r: R, key: &[u8]) -> Result<[u8; SHA1::OUTPUT_SIZE], Error>
-where
+pub fn digest_from_reader<
+    const B: usize,
+    const L: usize,
+    H: HashFn<B, L>,
+    F: Fn() -> H,
     R: Read,
-{
-    let mut hmac_sha1_state = HMAC::new(SHA1::new, key);
+>(
+    hash_new_fn: F,
+    mut r: R,
+    key: &[u8],
+) -> Result<[u8; L], Error> {
+    let mut state = HMAC::new(hash_new_fn, key);
     let mut buf = [0u8; 512];
 
     loop {
@@ -73,17 +84,17 @@ where
             break;
         }
 
-        hmac_sha1_state.update(&buf[..n]);
+        state.update(&buf[..n]);
     }
 
-    Ok(hmac_sha1_state.finalize())
+    Ok(state.finalize())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::digest_from_bytes;
     use crate::hex;
-
-    use super::sha1_digest_from_bytes;
+    use crate::sha1::SHA1;
 
     #[test]
     fn test_hmac_sha1_rfc_test_vectors() {
@@ -140,7 +151,7 @@ mod tests {
         ];
 
         for test_case in tests_cases {
-            let digest = sha1_digest_from_bytes(test_case.data.as_slice(), &test_case.key);
+            let digest = digest_from_bytes(SHA1::new, test_case.data.as_slice(), &test_case.key);
             assert!(digest.eq(test_case.expected_digest.as_slice()))
         }
     }

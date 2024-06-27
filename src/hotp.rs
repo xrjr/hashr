@@ -46,7 +46,8 @@ mod tests {
         ];
 
         for i in 0..expected.len() {
-            let hs = hmac::sha1_digest_from_bytes(i.to_be_bytes().as_slice(), secret.as_slice());
+            let hs =
+                hmac::digest_from_bytes(SHA1::new, i.to_be_bytes().as_slice(), secret.as_slice());
             let expected = hex::decode_hex(expected[i]).unwrap();
             let expected = expected.as_slice();
             assert!(hs.eq(expected));
@@ -62,7 +63,8 @@ mod tests {
         ];
 
         for i in 0..expected.len() {
-            let hs = hmac::sha1_digest_from_bytes(i.to_be_bytes().as_slice(), secret.as_slice());
+            let hs =
+                hmac::digest_from_bytes(SHA1::new, i.to_be_bytes().as_slice(), secret.as_slice());
             assert!(dt(&hs) == expected[i]);
         }
     }
