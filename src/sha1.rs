@@ -1,5 +1,5 @@
-pub const BLOCK_BYTE_LENGTH: usize = 64; // 512 bits = 64 Bytes, B in hmac rfc
-pub const OUTPUT_BYTE_LENGTH: usize = 20; // L in hmac rfc
+pub const BLOCK_SIZE: usize = 64;
+pub const OUTPUT_SIZE: usize = 20;
 const TRAILING_MESSAGE_LENGTH_SIZE: usize = 8; // u64 = 8 bytes
 const ONE_PADDED_BYTE_SIZE: usize = 1;
 use std::io::{Error, Read};
@@ -7,7 +7,7 @@ use std::io::{Error, Read};
 use crate::hash::HashFn;
 
 pub struct SHA1 {
-    buf: [u8; BLOCK_BYTE_LENGTH],
+    buf: [u8; BLOCK_SIZE],
     total_size: usize,
     h: [u32; 5],
 }
@@ -15,7 +15,7 @@ pub struct SHA1 {
 impl SHA1 {
     pub fn new() -> Self {
         Self {
-            buf: [0u8; BLOCK_BYTE_LENGTH],
+            buf: [0u8; BLOCK_SIZE],
             total_size: 0,
             h: default_h(),
         }
@@ -28,7 +28,7 @@ impl Default for SHA1 {
     }
 }
 
-impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
+impl HashFn<BLOCK_SIZE, OUTPUT_SIZE> for SHA1 {
     fn update(&mut self, data: &[u8]) {
         let mut i = 0;
         while i < data.len() {
@@ -46,10 +46,10 @@ impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
         }
     }
 
-    fn finalize(&mut self) -> [u8; OUTPUT_BYTE_LENGTH] {
+    fn finalize(&mut self) -> [u8; OUTPUT_SIZE] {
         compute_with_padding(&mut self.h, &self.buf, self.total_size);
 
-        let mut res = [0u8; OUTPUT_BYTE_LENGTH];
+        let mut res = [0u8; OUTPUT_SIZE];
 
         res[0..4].copy_from_slice(&self.h[0].to_be_bytes());
         res[4..8].copy_from_slice(&self.h[1].to_be_bytes());
@@ -61,13 +61,13 @@ impl HashFn<BLOCK_BYTE_LENGTH, OUTPUT_BYTE_LENGTH> for SHA1 {
     }
 }
 
-pub fn digest_from_bytes(b: &[u8]) -> [u8; OUTPUT_BYTE_LENGTH] {
+pub fn digest_from_bytes(b: &[u8]) -> [u8; OUTPUT_SIZE] {
     let mut sha1_state = SHA1::new();
     sha1_state.update(b);
     sha1_state.finalize()
 }
 
-pub fn digest_from_reader<R>(mut r: R) -> Result<[u8; OUTPUT_BYTE_LENGTH], Error>
+pub fn digest_from_reader<R>(mut r: R) -> Result<[u8; OUTPUT_SIZE], Error>
 where
     R: Read,
 {
@@ -115,7 +115,7 @@ fn f(t: usize, b: u32, c: u32, d: u32) -> u32 {
     }
 }
 
-fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_BYTE_LENGTH]) {
+fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_SIZE]) {
     let mut w = [0u32; 80];
     for (i, w_i) in w.iter_mut().enumerate().take(16) {
         let mut buf: [u8; 4] = [0u8; 4];
@@ -150,11 +150,11 @@ fn compute_block(h: &mut [u32; 5], block: &[u8; BLOCK_BYTE_LENGTH]) {
     h[4] = h[4].wrapping_add(e);
 }
 
-fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_BYTE_LENGTH], total_size: usize) {
+fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_SIZE], total_size: usize) {
     let n_zeroes = number_of_zero_bytes(total_size);
-    let last_index = total_size % BLOCK_BYTE_LENGTH;
+    let last_index = total_size % BLOCK_SIZE;
 
-    let mut vbuf = [0u8; 2 * BLOCK_BYTE_LENGTH];
+    let mut vbuf = [0u8; 2 * BLOCK_SIZE];
     vbuf[0..last_index].copy_from_slice(&buf[0..last_index]);
 
     vbuf[last_index] = 0b10000000;
@@ -168,10 +168,10 @@ fn compute_with_padding(h: &mut [u32; 5], buf: &[u8; BLOCK_BYTE_LENGTH], total_s
     vbuf[zeroes_end_index..zeroes_end_index + TRAILING_MESSAGE_LENGTH_SIZE]
         .copy_from_slice(&total_size_bytes);
 
-    compute_block(h, &vbuf[..BLOCK_BYTE_LENGTH].try_into().unwrap());
+    compute_block(h, &vbuf[..BLOCK_SIZE].try_into().unwrap());
 
-    if last_index > BLOCK_BYTE_LENGTH - ONE_PADDED_BYTE_SIZE - TRAILING_MESSAGE_LENGTH_SIZE {
-        compute_block(h, &vbuf[BLOCK_BYTE_LENGTH..].try_into().unwrap());
+    if last_index > BLOCK_SIZE - ONE_PADDED_BYTE_SIZE - TRAILING_MESSAGE_LENGTH_SIZE {
+        compute_block(h, &vbuf[BLOCK_SIZE..].try_into().unwrap());
     }
 }
 
@@ -180,9 +180,9 @@ fn default_h() -> [u32; 5] {
 }
 
 fn number_of_zero_bytes(total_size: usize) -> usize {
-    (BLOCK_BYTE_LENGTH
-        - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_BYTE_LENGTH))
-        % BLOCK_BYTE_LENGTH
+    (BLOCK_SIZE
+        - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE))
+        % BLOCK_SIZE
 }
 
 #[cfg(test)]
