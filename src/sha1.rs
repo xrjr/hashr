@@ -180,8 +180,7 @@ fn default_h() -> [u32; 5] {
 }
 
 fn number_of_zero_bytes(total_size: usize) -> usize {
-    (BLOCK_SIZE
-        - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE))
+    (BLOCK_SIZE - ((total_size + ONE_PADDED_BYTE_SIZE + TRAILING_MESSAGE_LENGTH_SIZE) % BLOCK_SIZE))
         % BLOCK_SIZE
 }
 
