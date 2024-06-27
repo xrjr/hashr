@@ -1,7 +1,12 @@
-use crate::hmac::HMAC;
 use crate::hash::HashFn;
+use crate::hmac::HMAC;
 
-pub fn hotp<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H>(hash_new_fn: F, key: &[u8], counter: u64, digits: u32) -> u32 {
+pub fn hotp<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H>(
+    hash_new_fn: F,
+    key: &[u8],
+    counter: u64,
+    digits: u32,
+) -> u32 {
     let mut counter_hasher = HMAC::new(hash_new_fn, key);
     counter_hasher.update(counter.to_be_bytes().as_slice());
     let hs = counter_hasher.finalize();
@@ -21,8 +26,8 @@ fn dt<const L: usize>(hs: &[u8; L]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::{dt, hotp};
-    use crate::{hex, hmac};
     use crate::sha1::SHA1;
+    use crate::{hex, hmac};
 
     #[test]
     fn test_hotp_hmac_sha1_rfc() {

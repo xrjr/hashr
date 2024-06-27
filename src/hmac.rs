@@ -5,7 +5,7 @@ use crate::{hash::HashFn, sha1::SHA1};
 pub struct HMAC<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> {
     key_opad: [u8; B],
     hash_state: H,
-    hash_new_fn: F
+    hash_new_fn: F,
 }
 
 impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HMAC<B, L, H, F> {
@@ -31,12 +31,14 @@ impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HMAC<B, L, H
         Self {
             hash_state: sha1state,
             key_opad,
-            hash_new_fn
+            hash_new_fn,
         }
     }
 }
 
-impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HashFn<B, L> for HMAC<B, L, H, F> {
+impl<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H> HashFn<B, L>
+    for HMAC<B, L, H, F>
+{
     fn update(&mut self, data: &[u8]) {
         self.hash_state.update(data);
     }
@@ -57,10 +59,7 @@ pub fn sha1_digest_from_bytes(data: &[u8], key: &[u8]) -> [u8; SHA1::OUTPUT_SIZE
     hmac_sha1_state.finalize()
 }
 
-pub fn sha1_digest_from_reader<R>(
-    mut r: R,
-    key: &[u8],
-) -> Result<[u8; SHA1::OUTPUT_SIZE], Error>
+pub fn sha1_digest_from_reader<R>(mut r: R, key: &[u8]) -> Result<[u8; SHA1::OUTPUT_SIZE], Error>
 where
     R: Read,
 {
