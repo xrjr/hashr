@@ -14,9 +14,9 @@ pub fn hotp<const B: usize, const L: usize, H: HashFn<B, L>, F: Fn() -> H>(
     snum % 10u32.pow(digits)
 }
 
-// dynamic truncation of sha1 digest
+// dynamic truncation
 fn dt<const L: usize>(hs: &[u8; L]) -> u32 {
-    let offset = (hs[19] & 0xf) as usize;
+    let offset = (hs[L-1] & 0xf) as usize;
     ((hs[offset] & 0x7f) as u32) << 24
         | (hs[offset + 1] as u32) << 16
         | (hs[offset + 2] as u32) << 8
