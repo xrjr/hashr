@@ -2,10 +2,20 @@
 
 [![tests](https://github.com/xrjr/hashr/actions/workflows/tests.yml/badge.svg)](https://github.com/xrjr/hashr/actions/workflows/tests.yml)
 
-Currently supported algorithms :
-- sha1
-- hmac-sha1
-- hotp
+
+
+## Supported algorithms
+
+- [x] sha1
+- [x] hmac
+- [x] hotp/totp
+- [ ] md5
+- [ ] sha256/224
+- [ ] sha512/384
+
+
+
+## Informations
 
 The library *might* support other hashing algorithms, as well as encryption algorithms.
 

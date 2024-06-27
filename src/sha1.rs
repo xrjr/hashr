@@ -99,7 +99,7 @@ fn k(t: usize) -> u32 {
     }
 }
 
-fn s(n: usize, x: u32) -> u32 {
+fn s(n: u32, x: u32) -> u32 {
     (x << n) | (x >> (32 - n))
 }
 
